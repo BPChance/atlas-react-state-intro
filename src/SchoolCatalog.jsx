@@ -1,50 +1,109 @@
+import React from 'react';
+import { useState, useEffect } from 'react';
+
 export default function SchoolCatalog() {
+  const [courses, setCourses] = useState([]);
+  const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortConfig, setSortConfig] = useState({
+    key: '',
+    direction: 'asc',
+  });
+
+  useEffect(() => {
+    fetch('/api/courses.json')
+      .then((response) => response.json())
+      .then((data) => {
+        setCourses(data);
+      })
+      .catch((error) => {
+        setError(error);
+      });
+  }, []);
+
+  if (error) {
+    return <p>Error fetching data: {error.message}</p>;
+  }
+
+  const filteredCourses = courses.filter((course) => {
+    const lowercasedSearchQuery = searchQuery.toLowerCase();
+    return (
+      course.courseNumber.toLowerCase().includes(lowercasedSearchQuery) ||
+      course.courseName.toLowerCase().includes(lowercasedSearchQuery)
+    );
+  });
+
+  const sortedCourses = [...filteredCourses].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+
+    const isAscending = sortConfig.direction === 'asc';
+    const aValue = a[sortConfig.key];
+    const bValue = b[sortConfig.key];
+
+    if (aValue < bValue) {
+      if (isAscending) {
+        return -1;
+      } else {
+        return 1;
+      }
+    }
+
+    if (aValue > bValue) {
+      if (isAscending) {
+        return 1;
+      } else {
+        return -1;
+      }
+    }
+
+    return 0;
+  });
+
+  const handleSort = (columnKey) => {
+    let direction = 'asc';
+    if (sortConfig.key === columnKey && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key: columnKey, direction });
+  };
+
   return (
     <div className="school-catalog">
       <h1>School Catalog</h1>
-      <input type="text" placeholder="Search" />
+      <input
+        type="text"
+        placeholder="Search"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+      />
       <table>
         <thead>
           <tr>
-            <th>Trimester</th>
-            <th>Course Number</th>
-            <th>Courses Name</th>
-            <th>Semester Credits</th>
-            <th>Total Clock Hours</th>
+            <th onClick={() => handleSort('trimester')}>Trimester</th>
+            <th onClick={() => handleSort('courseNumber')}>Course Number</th>
+            <th onClick={() => handleSort('courseName')}>Courses Name</th>
+            <th onClick={() => handleSort('semesterCredits')}>
+              Semester Credits
+            </th>
+            <th onClick={() => handleSort('totalClockHours')}>
+              Total Clock Hours
+            </th>
             <th>Enroll</th>
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td>1</td>
-            <td>PP1000</td>
-            <td>Beginning Procedural Programming</td>
-            <td>2</td>
-            <td>30</td>
-            <td>
-              <button>Enroll</button>
-            </td>
-          </tr>
-          <tr>
-            <td>1</td>
-            <td>PP1100</td>
-            <td>Basic Procedural Programming</td>
-            <td>4</td>
-            <td>50</td>
-            <td>
-              <button>Enroll</button>
-            </td>
-          </tr>
-          <tr>
-            <td>1</td>
-            <td>OS1000</td>
-            <td>Fundamentals of Open Source Operating Systems</td>
-            <td>2.5</td>
-            <td>37.5</td>
-            <td>
-              <button>Enroll</button>
-            </td>
-          </tr>
+          {sortedCourses.map((course) => (
+            <tr key={course.courseNumber}>
+              <td>{course.trimester}</td>
+              <td>{course.courseNumber}</td>
+              <td>{course.courseName}</td>
+              <td>{course.semesterCredits}</td>
+              <td>{course.totalClockHours}</td>
+              <td>
+                <button>Enroll</button>
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
       <div className="pagination">
